@@ -21537,7 +21537,7 @@ var HomeAssistantClient = class _HomeAssistantClient {
       offset,
       total_matched: matched.length,
       returned: sliced.length,
-      truncated: offset + sliced.length < matched.length || offset > 0,
+      truncated: offset + sliced.length < matched.length,
       states: sliced.map(summarizeState)
     };
   }
@@ -21582,7 +21582,7 @@ var HomeAssistantClient = class _HomeAssistantClient {
         headers: {
           Authorization: `Bearer ${this.token}`,
           Accept: "application/json",
-          "Content-Type": "application/json"
+          ...body !== void 0 ? { "Content-Type": "application/json" } : {}
         },
         body: body === void 0 ? void 0 : JSON.stringify(body),
         signal: AbortSignal.timeout(this.timeoutMs)
@@ -21800,12 +21800,7 @@ function createToolHandlers(client) {
     },
     async ha_list_services(input) {
       try {
-        if (!input.domain || !input.domain.trim()) {
-          throw new Error(
-            "ha_list_services requires domain (for example light or climate). Refusing to dump every domain."
-          );
-        }
-        return jsonResult(await client.listServices(input.domain));
+        return jsonResult(await client.listServices(input.domain ?? ""));
       } catch (error2) {
         return errorResult(error2);
       }
@@ -21851,6 +21846,8 @@ function createToolHandlers(client) {
 // src/index.ts
 var SERVER_NAME = "home-assistant";
 var SERVER_VERSION = "1.0.0";
+var ENTITY_ID_RE = /^[a-z][a-z0-9_]*\.[a-z0-9_]+$/;
+var entityIdSchema = external_exports.string().regex(ENTITY_ID_RE, "entity_id must be domain.object_id, e.g. light.kitchen");
 var CONFIRM_TOGGLE = "Ask the human to confirm the entity_id and that they want it toggled before calling this tool.";
 var CONFIRM_SERVICE = "Ask the human to confirm domain, service, target entity, and expected effect before calling this tool.";
 function createServer(client) {
@@ -21895,7 +21892,7 @@ function createServer(client) {
     {
       description: "Get one entity state (GET /api/states/{entity_id}).",
       inputSchema: {
-        entity_id: external_exports.string().describe("Entity id such as light.kitchen.")
+        entity_id: entityIdSchema.describe("Entity id such as light.kitchen.")
       }
     },
     async (input) => tools.ha_get_state(input)
@@ -21905,7 +21902,7 @@ function createServer(client) {
     {
       description: `Toggle an entity (POST /api/services/{domain}/toggle). ${CONFIRM_TOGGLE}`,
       inputSchema: {
-        entity_id: external_exports.string().describe("Entity id to toggle, such as switch.porch.")
+        entity_id: entityIdSchema.describe("Entity id to toggle, such as switch.porch.")
       }
     },
     async (input) => tools.ha_toggle(input)
@@ -21917,7 +21914,7 @@ function createServer(client) {
       inputSchema: {
         domain: external_exports.string().describe("Service domain such as light or climate."),
         service: external_exports.string().describe("Service name such as turn_on or set_temperature."),
-        entity_id: external_exports.string().optional().describe("Optional target entity_id."),
+        entity_id: entityIdSchema.optional().describe("Optional target entity_id."),
         data: external_exports.record(external_exports.string(), external_exports.unknown()).optional().describe("Optional service data merged with entity_id.")
       }
     },

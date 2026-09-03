@@ -26,6 +26,7 @@ test("ping calls GET /api/ with a bearer token", async () => {
   assert.equal(calls[0]?.url, "http://homeassistant:8123/api/");
   assert.equal(calls[0]?.headers.Authorization, "Bearer test-token");
   assert.equal(calls[0]?.headers.Accept, "application/json");
+  assert.equal(calls[0]?.headers["Content-Type"], undefined);
 });
 
 test("listStates requires domain, prefix, or q and caps results", async () => {
@@ -99,6 +100,7 @@ test("toggle posts domain toggle with entity_id", async () => {
   await client.toggle("switch.porch");
   assert.equal(calls[0]?.method, "POST");
   assert.equal(calls[0]?.url, "http://homeassistant:8123/api/services/switch/toggle");
+  assert.equal(calls[0]?.headers["Content-Type"], "application/json");
   assert.equal(calls[0]?.body, JSON.stringify({ entity_id: "switch.porch" }));
 });
 
@@ -147,4 +149,19 @@ test("invalid entity ids are rejected before HTTP", async () => {
   await assert.rejects(() => client.toggle("../etc/passwd"), /entity_id/);
   await assert.rejects(() => client.callService("LIGHT!", "turn_on"), /domain/);
   assert.equal(calls.length, 0);
+});
+
+test("network error is caught and re-thrown as a plain Error", async () => {
+  const failFetch: typeof fetch = async () => {
+    throw new TypeError("fetch failed");
+  };
+  const client = new HomeAssistantClient(cfg, failFetch);
+  await assert.rejects(
+    () => client.ping(),
+    (err: unknown) => {
+      assert(err instanceof Error);
+      assert.match(err.message, /request to \/api\/ failed/);
+      return true;
+    },
+  );
 });

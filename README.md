@@ -80,7 +80,7 @@ export HA_TOKEN=your-long-lived-token
 node bin/server.mjs
 ```
 
-Point a local MCP client at the same command. In this repo that is `mcp.json`, with `${PLUGIN_ROOT}` expanded to this directory:
+Point a local MCP client at the same command. In this repo that is `mcp.json`. Cursor/Grok Bot expands `${PLUGIN_ROOT}` at install; for a hand-written mcp.json, replace it with this directory's absolute path:
 
 ```json
 {

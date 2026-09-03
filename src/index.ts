@@ -8,6 +8,11 @@ import { createToolHandlers } from "./tools.ts";
 export const SERVER_NAME = "home-assistant";
 export const SERVER_VERSION = "1.0.0";
 
+const ENTITY_ID_RE = /^[a-z][a-z0-9_]*\.[a-z0-9_]+$/;
+const entityIdSchema = z
+  .string()
+  .regex(ENTITY_ID_RE, "entity_id must be domain.object_id, e.g. light.kitchen");
+
 const CONFIRM_TOGGLE =
   "Ask the human to confirm the entity_id and that they want it toggled before calling this tool.";
 const CONFIRM_SERVICE =
@@ -82,7 +87,7 @@ export function createServer(client: HomeAssistantClient): McpServer {
     {
       description: "Get one entity state (GET /api/states/{entity_id}).",
       inputSchema: {
-        entity_id: z.string().describe("Entity id such as light.kitchen."),
+        entity_id: entityIdSchema.describe("Entity id such as light.kitchen."),
       },
     },
     async (input) => tools.ha_get_state(input),
@@ -93,7 +98,7 @@ export function createServer(client: HomeAssistantClient): McpServer {
     {
       description: `Toggle an entity (POST /api/services/{domain}/toggle). ${CONFIRM_TOGGLE}`,
       inputSchema: {
-        entity_id: z.string().describe("Entity id to toggle, such as switch.porch."),
+        entity_id: entityIdSchema.describe("Entity id to toggle, such as switch.porch."),
       },
     },
     async (input) => tools.ha_toggle(input),
@@ -106,7 +111,7 @@ export function createServer(client: HomeAssistantClient): McpServer {
       inputSchema: {
         domain: z.string().describe("Service domain such as light or climate."),
         service: z.string().describe("Service name such as turn_on or set_temperature."),
-        entity_id: z.string().optional().describe("Optional target entity_id."),
+        entity_id: entityIdSchema.optional().describe("Optional target entity_id."),
         data: z
           .record(z.string(), z.unknown())
           .optional()

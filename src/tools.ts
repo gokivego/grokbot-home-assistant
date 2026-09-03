@@ -55,12 +55,7 @@ export function createToolHandlers(client: HomeAssistantClient) {
 
     async ha_list_services(input: { domain?: string }): Promise<ToolTextResult> {
       try {
-        if (!input.domain || !input.domain.trim()) {
-          throw new Error(
-            "ha_list_services requires domain (for example light or climate). Refusing to dump every domain.",
-          );
-        }
-        return jsonResult(await client.listServices(input.domain));
+        return jsonResult(await client.listServices(input.domain ?? ""));
       } catch (error) {
         return errorResult(error);
       }

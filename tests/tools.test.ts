@@ -31,8 +31,7 @@ test("ha_list_services tool requires domain", async () => {
   const tools = createToolHandlers(new HomeAssistantClient(cfg, fetch));
   const result = parse(await tools.ha_list_services({}));
   assert.equal(result.isError, true);
-  assert.match(String(result.body.error), /requires domain/);
-  assert.match(String(result.body.error), /dump every domain/);
+  assert.match(String(result.body.error), /domain is required/);
   assert.equal(calls.length, 0);
 });
 

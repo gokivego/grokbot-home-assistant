@@ -125,7 +125,7 @@ export class HomeAssistantClient {
       offset,
       total_matched: matched.length,
       returned: sliced.length,
-      truncated: offset + sliced.length < matched.length || offset > 0,
+      truncated: offset + sliced.length < matched.length,
       states: sliced.map(summarizeState),
     };
   }
@@ -183,7 +183,7 @@ export class HomeAssistantClient {
         headers: {
           Authorization: `Bearer ${this.token}`,
           Accept: "application/json",
-          "Content-Type": "application/json",
+          ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         },
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: AbortSignal.timeout(this.timeoutMs),

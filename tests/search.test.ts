@@ -51,7 +51,7 @@ test("listStates offset pages after filtering; truncated if not all matched rows
   const last = await client.listStates({ domain: "light", limit: 50, offset: 100 });
   assert.equal(last.offset, 100);
   assert.equal(last.returned, 20);
-  assert.equal(last.truncated, true);
+  assert.equal(last.truncated, false);
   assert.equal(last.states[0]?.entity_id, "light.lamp_100");
 
   const complete = await client.listStates({ prefix: "light.lamp_0", limit: 50, offset: 0 });

@@ -1,5 +1,9 @@
 # Home Assistant plugin log
 
+## [2026-09-02] Pagination truncated flag and plugin polish
+
+- Last page of `ha_list_states` now reports `truncated: false`; GET requests omit Content-Type; entity_id Zod regex on get/toggle/call_service; `ha_list_services` defers empty-domain to `requireSlug`; network-error test; README notes Cursor/Grok Bot expands `${PLUGIN_ROOT}` at install.
+
 ## [2026-09-02] Friendly-name search, offset, service discovery, token docs
 
 - `ha_list_states` accepts `q` (entity_id / friendly_name substring) and `offset`; `ha_list_services` lists one domain; README documents Node 20+ on the MCP host and 2026 HA long-lived token UI; `.local` is LAN/mDNS only.
