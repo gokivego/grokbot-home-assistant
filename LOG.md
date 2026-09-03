@@ -28,3 +28,5 @@
 - Tools: `ha_ping`, `ha_list_states` (domain or prefix required, results capped), `ha_get_state`, `ha_toggle`, `ha_call_service`. Skill and README require a human confirm before the two write tools.
 - MCP is stdio on the Cursor/Grok machine. Reach HA via Tailscale MagicDNS, LAN, or Nabu Casa. Example `http://homeassistant:8123`. This house: hostname `homeassistant`, generic MagicDNS such as `http://homeassistant:8123`. Not hardcoded as the only URL.
 - Tests mock HTTP and pass without a live instance. `tests/live.test.ts` skips unless both env vars are set.
+## [2026-09-03] Workspace subtree
+- Integrated into ~/gokivego as a git subtree. Upstream remote grokbot-home-assistant stays private. Nested .git removed.
