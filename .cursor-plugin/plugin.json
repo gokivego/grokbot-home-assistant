@@ -1,0 +1,38 @@
+{
+  "name": "home-assistant",
+  "displayName": "Home Assistant",
+  "version": "1.0.0",
+  "description": "Query and control Home Assistant over REST. MCP stdio runs on the Grok Bot or Cursor computer, not on Home Assistant. HA_URL must be reachable from that computer.",
+  "author": {
+    "name": "Venkat Gokul Reddy Palampally"
+  },
+  "homepage": "https://github.com/gokivego/grokbot-home-assistant",
+  "repository": "https://github.com/gokivego/grokbot-home-assistant",
+  "license": "MIT",
+  "keywords": [
+    "home-assistant",
+    "smart-home",
+    "mcp",
+    "rest"
+  ],
+  "logo": "assets/logo.svg",
+  "variables": {
+    "type": "object",
+    "properties": {
+      "HA_URL": {
+        "type": "string",
+        "title": "Home Assistant URL",
+        "description": "Base URL with no trailing slash, reachable from the Grok Bot or Cursor computer (MCP stdio runs there, not on Home Assistant). Best: Tailscale MagicDNS such as http://homeassistant:8123 (that computer must be on the tailnet). Also fine: Nabu Casa or another public HTTPS URL. LAN-only IPs (192.168.x, 10.x, 172.16-31.x) fail unless that computer is on the house LAN; Grok Bot cloud computers are not."
+      },
+      "HA_TOKEN": {
+        "type": "string",
+        "title": "Long-lived access token",
+        "description": "Create one in Home Assistant under Profile, Security, Long-lived access tokens."
+      }
+    },
+    "required": [
+      "HA_URL",
+      "HA_TOKEN"
+    ]
+  }
+}

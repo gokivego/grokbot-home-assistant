@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "home-assistant": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${PLUGIN_ROOT}/bin/server.mjs"],
+      "env": {
+        "HA_URL": "${HA_URL}",
+        "HA_TOKEN": "${HA_TOKEN}"
+      }
+    }
+  }
+}
