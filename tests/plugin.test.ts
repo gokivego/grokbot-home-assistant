@@ -26,6 +26,12 @@ test("Cursor plugin manifest names the plugin and requires HA_URL plus HA_TOKEN"
   assert.deepEqual(plugin.variables.required, ["HA_URL", "HA_TOKEN"]);
   assert.equal(plugin.variables.properties.HA_URL?.type, "string");
   assert.equal(plugin.variables.properties.HA_TOKEN?.type, "string");
+  const tokenHelp = plugin.variables.properties.HA_TOKEN?.description ?? "";
+  assert.match(tokenHelp, /User profile/);
+  assert.match(tokenHelp, /Security/);
+  assert.match(tokenHelp, /Long-lived access tokens/);
+  assert.match(tokenHelp, /Create Token/);
+  assert.match(tokenHelp, /Never put it in git or chat/);
   const urlHelp = plugin.variables.properties.HA_URL?.description ?? "";
   assert.match(urlHelp, /Grok Bot or Cursor computer/);
   assert.match(urlHelp, /not on Home Assistant/);
@@ -77,6 +83,11 @@ test("skill documents Reachability and ping-failure cause", async () => {
   assert.match(skill, /Grok Bot cloud computers are not/);
   assert.match(skill, /`ha_toggle` and `ha_call_service`/);
   assert.match(skill, /explicitly confirms/);
+  assert.match(skill, /ha_list_services/);
+  assert.match(skill, /brightness_pct/);
+  assert.match(skill, /prefix.*or `q`/);
+  assert.match(skill, /homeassistant\.local:8123/);
+  assert.match(skill, /will not resolve/);
   assert.doesNotMatch(skill, /100\.72\.49\.113/);
 });
 
@@ -89,5 +100,16 @@ test("README uses generic networking examples and no house Tailscale IP", async 
   assert.match(readme, /Grok Bot cloud computers are not/);
   assert.match(readme, /likely cause is `HA_URL` not reachable/);
   assert.match(readme, /Human must confirm first/);
+  assert.match(readme, /Node.js 20\+/);
+  assert.match(readme, /must be installed there/);
+  assert.match(readme, /plugin will fail to launch/);
+  assert.match(readme, /homeassistant\.local:8123/);
+  assert.match(readme, /LAN example only/);
+  assert.match(readme, /will not resolve mDNS/);
+  assert.match(readme, /User profile > Security/);
+  assert.match(readme, /Long-lived access tokens/);
+  assert.match(readme, /copy it immediately/);
+  assert.match(readme, /ha_list_services/);
+  assert.match(readme, /Requires `domain`, `prefix`, or `q`/);
   assert.doesNotMatch(readme, /100\.72\.49\.113/);
 });

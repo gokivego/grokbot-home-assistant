@@ -28,7 +28,7 @@ test("ping calls GET /api/ with a bearer token", async () => {
   assert.equal(calls[0]?.headers.Accept, "application/json");
 });
 
-test("listStates requires domain or prefix and caps results", async () => {
+test("listStates requires domain, prefix, or q and caps results", async () => {
   const many = Array.from({ length: 120 }, (_, i) =>
     state(`light.lamp_${i}`, i % 2 === 0 ? "on" : "off"),
   );
@@ -37,11 +37,12 @@ test("listStates requires domain or prefix and caps results", async () => {
 
   await assert.rejects(
     () => client.listStates({}),
-    /requires domain .* or prefix/,
+    /requires domain .* prefix .* or q/,
   );
 
   const page = await client.listStates({ domain: "light", limit: 1000 });
   assert.equal(page.limit, MAX_STATE_LIMIT);
+  assert.equal(page.offset, 0);
   assert.equal(page.total_matched, 120);
   assert.equal(page.returned, MAX_STATE_LIMIT);
   assert.equal(page.truncated, true);

@@ -4,9 +4,12 @@ Cursor marketplace plugin that lets an agent query and control Home Assistant ov
 
 MCP stdio runs on the Grok Bot or Cursor computer. It does not run on Home Assistant. This plugin calls HA REST from that computer, so you do not need HA's native `/api/mcp` integration.
 
+MCP stdio runs `node` on the Grok Bot or Cursor computer. Node.js 20+ must be installed there. Without it the plugin will fail to launch.
+
 - `GET /api/`
 - `GET /api/states`
 - `GET /api/states/{entity_id}`
+- `GET /api/services`
 - `POST /api/services/{domain}/{service}`
 
 ## Reachability
@@ -19,23 +22,37 @@ The stdio server is a local `node` process on the Grok Bot or Cursor machine. `H
 | Nabu Casa or another public HTTPS URL | Fine. The computer only needs outbound HTTPS. |
 | LAN-only IP (`192.168.x.x`, `10.x.x.x`, `172.16.x.x`–`172.31.x.x`) | Fails unless that computer is on the same LAN. Grok Bot cloud computers are not. |
 
+If Cursor is on the same home LAN, `http://homeassistant.local:8123` can work via mDNS. That is a LAN example only. Do not use `.local` hostnames for Grok Bot cloud computers; they will not resolve mDNS.
+
 ## Install-time variables
 
 | Variable | Required | Meaning |
 | --- | --- | --- |
 | `HA_URL` | yes | Base URL, no trailing slash, reachable from the Grok Bot or Cursor computer. Prefer MagicDNS `http://homeassistant:8123`. |
-| `HA_TOKEN` | yes | Long-lived access token from Home Assistant, Profile, Security. |
+| `HA_TOKEN` | yes | Long-lived access token from Home Assistant, User profile > Security > Long-lived access tokens. |
 
 The plugin never stores those values in the repo. `mcp.json` only has `${HA_URL}` and `${HA_TOKEN}` placeholders. After install, set them under Plugins, Configure (Cursor) or the matching Grok plugin config.
 
-Create the token in the HA UI. Do not paste it into chat.
+## Long-lived access token
+
+Create the token in the official Home Assistant UI (as of 2026):
+
+1. Open Home Assistant in a browser.
+2. Click your user / profile icon at the bottom of the left sidebar.
+3. Open the Security tab (User profile > Security).
+4. Scroll to Long-lived access tokens.
+5. Create Token, give it a name (for example Grok Bot), and copy it immediately. Home Assistant shows it once.
+6. Paste it into the plugin `HA_TOKEN` field. Never put it in git or chat.
+
+Tokens inherit that user's permissions. They last until revoked on the same page.
 
 ## Tools
 
 | Tool | REST | Notes |
 | --- | --- | --- |
 | `ha_ping` | `GET /api/` | Connectivity check. On failure, the likely cause is `HA_URL` not reachable from the Grok Bot/Cursor computer. |
-| `ha_list_states` | `GET /api/states` | Requires `domain` or `prefix`. Default 50 results, hard cap 100 |
+| `ha_list_states` | `GET /api/states` | Requires `domain`, `prefix`, or `q`. Default 50 results, hard cap 100. Optional `offset` pages after filtering. |
+| `ha_list_services` | `GET /api/services` | Requires `domain`. Returns that domain's service names, descriptions, and field names. Use before guessing `ha_call_service` fields. |
 | `ha_get_state` | `GET /api/states/{id}` | One entity |
 | `ha_toggle` | `POST /api/services/{domain}/toggle` | **Human must confirm first** |
 | `ha_call_service` | `POST /api/services/{domain}/{service}` | **Human must confirm first** |
@@ -44,7 +61,7 @@ Create the token in the HA UI. Do not paste it into chat.
 
 ## Run locally
 
-Needs Node 20+.
+MCP stdio runs `node` on the Grok Bot or Cursor computer. Node.js 20+ must be installed there. Without it the plugin will fail to launch.
 
 ```bash
 cd home-assistant

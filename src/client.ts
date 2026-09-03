@@ -2,6 +2,8 @@ import { loadConfig, type HomeAssistantConfig } from "./config.ts";
 
 export const DEFAULT_STATE_LIMIT = 50;
 export const MAX_STATE_LIMIT = 100;
+export const MAX_SERVICES = 80;
+export const MAX_SERVICE_FIELDS = 40;
 
 export type FetchLike = typeof fetch;
 
@@ -23,16 +25,38 @@ export type StateSummary = {
 export type ListStatesFilter = {
   domain?: string;
   prefix?: string;
+  q?: string;
   limit?: number;
+  offset?: number;
 };
 
 export type ListStatesResult = {
-  filter: { domain?: string; prefix?: string };
+  filter: { domain?: string; prefix?: string; q?: string };
   limit: number;
+  offset: number;
   total_matched: number;
   returned: number;
   truncated: boolean;
   states: StateSummary[];
+};
+
+export type ServiceFieldSummary = {
+  name: string;
+  description?: string;
+};
+
+export type ServiceSummary = {
+  service: string;
+  name?: string;
+  description?: string;
+  fields: ServiceFieldSummary[];
+};
+
+export type ListServicesResult = {
+  domain: string;
+  returned: number;
+  truncated: boolean;
+  services: ServiceSummary[];
 };
 
 export class HomeAssistantApiError extends Error {
@@ -74,26 +98,50 @@ export class HomeAssistantClient {
   async listStates(filter: ListStatesFilter): Promise<ListStatesResult> {
     const domain = normalizeOptionalSlug(filter.domain, "domain");
     const prefix = normalizeOptionalPrefix(filter.prefix);
-    if (!domain && !prefix) {
-      throw new Error("ha_list_states requires domain (for example light) or prefix (for example light.kitchen). Unfiltered dumps are refused.");
+    const q = normalizeOptionalQuery(filter.q);
+    if (!domain && !prefix && !q) {
+      throw new Error(
+        "ha_list_states requires domain (for example light), prefix (for example light.kitchen), or q (substring of entity_id or friendly_name). Unfiltered dumps are refused.",
+      );
     }
 
     const limit = clampLimit(filter.limit);
+    const offset = clampOffset(filter.offset);
     const states = await this.requestJson<HaState[]>("GET", "/api/states");
     if (!Array.isArray(states)) {
       throw new Error("Home Assistant /api/states did not return a list.");
     }
 
-    const matched = states.filter((item) => matchesFilter(item.entity_id, domain, prefix));
-    const sliced = matched.slice(0, limit);
+    const matched = states.filter((item) => matchesFilter(item, domain, prefix, q));
+    const sliced = matched.slice(offset, offset + limit);
 
     return {
-      filter: { ...(domain ? { domain } : {}), ...(prefix ? { prefix } : {}) },
+      filter: {
+        ...(domain ? { domain } : {}),
+        ...(prefix ? { prefix } : {}),
+        ...(q ? { q } : {}),
+      },
       limit,
+      offset,
       total_matched: matched.length,
       returned: sliced.length,
-      truncated: matched.length > sliced.length,
+      truncated: offset + sliced.length < matched.length || offset > 0,
       states: sliced.map(summarizeState),
+    };
+  }
+
+  async listServices(domainRaw: string): Promise<ListServicesResult> {
+    const domain = requireSlug(domainRaw, "domain");
+    const payload = await this.requestJson<unknown>("GET", "/api/services");
+    const servicesMap = extractDomainServices(payload, domain);
+    const entries = Object.entries(servicesMap);
+    const truncated = entries.length > MAX_SERVICES;
+    const services = entries.slice(0, MAX_SERVICES).map(([service, spec]) => summarizeService(service, spec));
+    return {
+      domain,
+      returned: services.length,
+      truncated,
+      services,
     };
   }
 
@@ -173,6 +221,14 @@ export function clampLimit(limit: number | undefined): number {
   return Math.min(n, MAX_STATE_LIMIT);
 }
 
+export function clampOffset(offset: number | undefined): number {
+  if (offset === undefined || Number.isNaN(offset)) {
+    return 0;
+  }
+  const n = Math.floor(offset);
+  return n < 0 ? 0 : n;
+}
+
 export function requireEntityId(raw: string): string {
   const id = raw.trim().toLowerCase();
   if (!/^[a-z][a-z0-9_]*\.[a-z0-9_]+$/.test(id)) {
@@ -182,6 +238,9 @@ export function requireEntityId(raw: string): string {
 }
 
 export function requireSlug(raw: string, label: string): string {
+  if (typeof raw !== "string" || !raw.trim()) {
+    throw new Error(`${label} is required (for example light or climate).`);
+  }
   const value = raw.trim().toLowerCase();
   if (!/^[a-z][a-z0-9_]*$/.test(value)) {
     throw new Error(`${label} must be a Home Assistant slug such as light or turn_on.`);
@@ -208,13 +267,29 @@ function normalizeOptionalPrefix(raw: string | undefined): string | undefined {
   return trimmed || undefined;
 }
 
-function matchesFilter(entityId: string, domain?: string, prefix?: string): boolean {
-  const id = entityId.toLowerCase();
+function normalizeOptionalQuery(raw: string | undefined): string | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  const trimmed = raw.trim();
+  return trimmed || undefined;
+}
+
+function matchesFilter(item: HaState, domain?: string, prefix?: string, q?: string): boolean {
+  const id = item.entity_id.toLowerCase();
   if (domain && !id.startsWith(`${domain}.`)) {
     return false;
   }
   if (prefix && !id.startsWith(prefix)) {
     return false;
+  }
+  if (q) {
+    const needle = q.toLowerCase();
+    const friendly =
+      typeof item.attributes?.friendly_name === "string" ? item.attributes.friendly_name.toLowerCase() : "";
+    if (!id.includes(needle) && !friendly.includes(needle)) {
+      return false;
+    }
   }
   return true;
 }
@@ -227,6 +302,75 @@ function summarizeState(state: HaState): StateSummary {
     last_changed: state.last_changed,
     ...(typeof friendly === "string" ? { friendly_name: friendly } : {}),
   };
+}
+
+function extractDomainServices(payload: unknown, domain: string): Record<string, unknown> {
+  if (Array.isArray(payload)) {
+    const hit = payload.find((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        return false;
+      }
+      return String((item as Record<string, unknown>).domain ?? "").toLowerCase() === domain;
+    }) as Record<string, unknown> | undefined;
+    return asServiceMap(hit?.services);
+  }
+
+  if (payload && typeof payload === "object") {
+    const rec = payload as Record<string, unknown>;
+    const direct = rec[domain];
+    if (direct && typeof direct === "object" && !Array.isArray(direct)) {
+      const maybe = direct as Record<string, unknown>;
+      const nested = asServiceMap(maybe.services);
+      return Object.keys(nested).length > 0 ? nested : asServiceMap(maybe);
+    }
+  }
+
+  return {};
+}
+
+function asServiceMap(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function summarizeService(service: string, spec: unknown): ServiceSummary {
+  const rec = spec && typeof spec === "object" && !Array.isArray(spec) ? (spec as Record<string, unknown>) : {};
+  const name = trimDescription(rec.name);
+  const description = trimDescription(rec.description);
+  return {
+    service,
+    ...(name ? { name } : {}),
+    ...(description ? { description } : {}),
+    fields: summarizeFields(rec.fields),
+  };
+}
+
+function summarizeFields(fields: unknown): ServiceFieldSummary[] {
+  if (!fields || typeof fields !== "object" || Array.isArray(fields)) {
+    return [];
+  }
+  return Object.entries(fields as Record<string, unknown>)
+    .slice(0, MAX_SERVICE_FIELDS)
+    .map(([name, spec]) => {
+      const description =
+        spec && typeof spec === "object" && !Array.isArray(spec)
+          ? trimDescription((spec as Record<string, unknown>).description)
+          : undefined;
+      return description ? { name, description } : { name };
+    });
+}
+
+function trimDescription(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return trimmed.length > 400 ? `${trimmed.slice(0, 400)}…` : trimmed;
 }
 
 function summarizeHttpError(status: number, body: string): string {

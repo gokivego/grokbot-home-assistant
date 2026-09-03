@@ -21481,6 +21481,8 @@ function loadConfig(env = process.env) {
 // src/client.ts
 var DEFAULT_STATE_LIMIT = 50;
 var MAX_STATE_LIMIT = 100;
+var MAX_SERVICES = 80;
+var MAX_SERVICE_FIELDS = 40;
 var HomeAssistantApiError = class extends Error {
   status;
   path;
@@ -21511,23 +21513,46 @@ var HomeAssistantClient = class _HomeAssistantClient {
   async listStates(filter) {
     const domain = normalizeOptionalSlug(filter.domain, "domain");
     const prefix = normalizeOptionalPrefix(filter.prefix);
-    if (!domain && !prefix) {
-      throw new Error("ha_list_states requires domain (for example light) or prefix (for example light.kitchen). Unfiltered dumps are refused.");
+    const q = normalizeOptionalQuery(filter.q);
+    if (!domain && !prefix && !q) {
+      throw new Error(
+        "ha_list_states requires domain (for example light), prefix (for example light.kitchen), or q (substring of entity_id or friendly_name). Unfiltered dumps are refused."
+      );
     }
     const limit = clampLimit(filter.limit);
+    const offset = clampOffset(filter.offset);
     const states = await this.requestJson("GET", "/api/states");
     if (!Array.isArray(states)) {
       throw new Error("Home Assistant /api/states did not return a list.");
     }
-    const matched = states.filter((item) => matchesFilter(item.entity_id, domain, prefix));
-    const sliced = matched.slice(0, limit);
+    const matched = states.filter((item) => matchesFilter(item, domain, prefix, q));
+    const sliced = matched.slice(offset, offset + limit);
     return {
-      filter: { ...domain ? { domain } : {}, ...prefix ? { prefix } : {} },
+      filter: {
+        ...domain ? { domain } : {},
+        ...prefix ? { prefix } : {},
+        ...q ? { q } : {}
+      },
       limit,
+      offset,
       total_matched: matched.length,
       returned: sliced.length,
-      truncated: matched.length > sliced.length,
+      truncated: offset + sliced.length < matched.length || offset > 0,
       states: sliced.map(summarizeState)
+    };
+  }
+  async listServices(domainRaw) {
+    const domain = requireSlug(domainRaw, "domain");
+    const payload = await this.requestJson("GET", "/api/services");
+    const servicesMap = extractDomainServices(payload, domain);
+    const entries = Object.entries(servicesMap);
+    const truncated = entries.length > MAX_SERVICES;
+    const services = entries.slice(0, MAX_SERVICES).map(([service, spec]) => summarizeService(service, spec));
+    return {
+      domain,
+      returned: services.length,
+      truncated,
+      services
     };
   }
   async getState(entityId) {
@@ -21590,6 +21615,13 @@ function clampLimit(limit) {
   }
   return Math.min(n, MAX_STATE_LIMIT);
 }
+function clampOffset(offset) {
+  if (offset === void 0 || Number.isNaN(offset)) {
+    return 0;
+  }
+  const n = Math.floor(offset);
+  return n < 0 ? 0 : n;
+}
 function requireEntityId(raw) {
   const id = raw.trim().toLowerCase();
   if (!/^[a-z][a-z0-9_]*\.[a-z0-9_]+$/.test(id)) {
@@ -21598,6 +21630,9 @@ function requireEntityId(raw) {
   return id;
 }
 function requireSlug(raw, label) {
+  if (typeof raw !== "string" || !raw.trim()) {
+    throw new Error(`${label} is required (for example light or climate).`);
+  }
   const value = raw.trim().toLowerCase();
   if (!/^[a-z][a-z0-9_]*$/.test(value)) {
     throw new Error(`${label} must be a Home Assistant slug such as light or turn_on.`);
@@ -21621,13 +21656,27 @@ function normalizeOptionalPrefix(raw) {
   const trimmed = raw.trim().toLowerCase();
   return trimmed || void 0;
 }
-function matchesFilter(entityId, domain, prefix) {
-  const id = entityId.toLowerCase();
+function normalizeOptionalQuery(raw) {
+  if (raw === void 0) {
+    return void 0;
+  }
+  const trimmed = raw.trim();
+  return trimmed || void 0;
+}
+function matchesFilter(item, domain, prefix, q) {
+  const id = item.entity_id.toLowerCase();
   if (domain && !id.startsWith(`${domain}.`)) {
     return false;
   }
   if (prefix && !id.startsWith(prefix)) {
     return false;
+  }
+  if (q) {
+    const needle = q.toLowerCase();
+    const friendly = typeof item.attributes?.friendly_name === "string" ? item.attributes.friendly_name.toLowerCase() : "";
+    if (!id.includes(needle) && !friendly.includes(needle)) {
+      return false;
+    }
   }
   return true;
 }
@@ -21639,6 +21688,63 @@ function summarizeState(state) {
     last_changed: state.last_changed,
     ...typeof friendly === "string" ? { friendly_name: friendly } : {}
   };
+}
+function extractDomainServices(payload, domain) {
+  if (Array.isArray(payload)) {
+    const hit = payload.find((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        return false;
+      }
+      return String(item.domain ?? "").toLowerCase() === domain;
+    });
+    return asServiceMap(hit?.services);
+  }
+  if (payload && typeof payload === "object") {
+    const rec = payload;
+    const direct = rec[domain];
+    if (direct && typeof direct === "object" && !Array.isArray(direct)) {
+      const maybe = direct;
+      const nested = asServiceMap(maybe.services);
+      return Object.keys(nested).length > 0 ? nested : asServiceMap(maybe);
+    }
+  }
+  return {};
+}
+function asServiceMap(value) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value;
+  }
+  return {};
+}
+function summarizeService(service, spec) {
+  const rec = spec && typeof spec === "object" && !Array.isArray(spec) ? spec : {};
+  const name = trimDescription(rec.name);
+  const description = trimDescription(rec.description);
+  return {
+    service,
+    ...name ? { name } : {},
+    ...description ? { description } : {},
+    fields: summarizeFields(rec.fields)
+  };
+}
+function summarizeFields(fields) {
+  if (!fields || typeof fields !== "object" || Array.isArray(fields)) {
+    return [];
+  }
+  return Object.entries(fields).slice(0, MAX_SERVICE_FIELDS).map(([name, spec]) => {
+    const description = spec && typeof spec === "object" && !Array.isArray(spec) ? trimDescription(spec.description) : void 0;
+    return description ? { name, description } : { name };
+  });
+}
+function trimDescription(value) {
+  if (typeof value !== "string") {
+    return void 0;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return void 0;
+  }
+  return trimmed.length > 400 ? `${trimmed.slice(0, 400)}\u2026` : trimmed;
 }
 function summarizeHttpError(status, body) {
   const snippet = redactSecrets(body).replace(/\s+/g, " ").slice(0, 240);
@@ -21688,6 +21794,18 @@ function createToolHandlers(client) {
     async ha_list_states(input) {
       try {
         return jsonResult(await client.listStates(input));
+      } catch (error2) {
+        return errorResult(error2);
+      }
+    },
+    async ha_list_services(input) {
+      try {
+        if (!input.domain || !input.domain.trim()) {
+          throw new Error(
+            "ha_list_services requires domain (for example light or climate). Refusing to dump every domain."
+          );
+        }
+        return jsonResult(await client.listServices(input.domain));
       } catch (error2) {
         return errorResult(error2);
       }
@@ -21751,14 +21869,26 @@ function createServer(client) {
   server.registerTool(
     "ha_list_states",
     {
-      description: "List Home Assistant states (GET /api/states). Requires domain or prefix. Results are capped; do not request an unfiltered dump.",
+      description: "List Home Assistant states (GET /api/states). Requires domain, prefix, or q. Results are capped and pageable; do not request an unfiltered dump.",
       inputSchema: {
         domain: external_exports.string().optional().describe("Entity domain such as light, switch, or sensor."),
         prefix: external_exports.string().optional().describe("entity_id prefix such as light.kitchen or sensor.weather."),
-        limit: external_exports.number().int().min(1).max(MAX_STATE_LIMIT).optional().describe(`Max entities to return. Default 50, hard cap ${MAX_STATE_LIMIT}.`)
+        q: external_exports.string().optional().describe("Case-insensitive substring match on entity_id and attributes.friendly_name."),
+        limit: external_exports.number().int().min(1).max(MAX_STATE_LIMIT).optional().describe(`Max entities to return. Default 50, hard cap ${MAX_STATE_LIMIT}.`),
+        offset: external_exports.number().int().min(0).optional().describe("Skip this many matched entities after filtering. Default 0.")
       }
     },
     async (input) => tools.ha_list_states(input)
+  );
+  server.registerTool(
+    "ha_list_services",
+    {
+      description: "List services for one Home Assistant domain (GET /api/services). Domain is required. Use this before guessing ha_call_service fields. Never dump every domain.",
+      inputSchema: {
+        domain: external_exports.string().describe("Service domain such as light, climate, or switch.")
+      }
+    },
+    async (input) => tools.ha_list_services(input)
   );
   server.registerTool(
     "ha_get_state",

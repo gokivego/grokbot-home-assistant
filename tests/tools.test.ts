@@ -23,6 +23,17 @@ test("ha_list_states tool returns a structured error without a filter", async ()
   const result = parse(await tools.ha_list_states({}));
   assert.equal(result.isError, true);
   assert.match(String(result.body.error), /requires domain/);
+  assert.match(String(result.body.error), /or q/);
+});
+
+test("ha_list_services tool requires domain", async () => {
+  const { fetch, calls } = mockFetch([{ path: "/api/services", json: [] }]);
+  const tools = createToolHandlers(new HomeAssistantClient(cfg, fetch));
+  const result = parse(await tools.ha_list_services({}));
+  assert.equal(result.isError, true);
+  assert.match(String(result.body.error), /requires domain/);
+  assert.match(String(result.body.error), /dump every domain/);
+  assert.equal(calls.length, 0);
 });
 
 test("ha_toggle and ha_call_service wrap the REST response", async () => {

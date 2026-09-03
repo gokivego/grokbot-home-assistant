@@ -1,5 +1,10 @@
 # Home Assistant plugin log
 
+## [2026-09-02] Friendly-name search, offset, service discovery, token docs
+
+- `ha_list_states` accepts `q` (entity_id / friendly_name substring) and `offset`; `ha_list_services` lists one domain; README documents Node 20+ on the MCP host and 2026 HA long-lived token UI; `.local` is LAN/mDNS only.
+
+
 ## [2026-09-02] GitHub repo is grokbot-home-assistant
 
 - Plugin `name` stays `home-assistant`. Public git repo is `https://github.com/gokivego/grokbot-home-assistant`.

@@ -33,7 +33,7 @@ export function createServer(client: HomeAssistantClient): McpServer {
     "ha_list_states",
     {
       description:
-        "List Home Assistant states (GET /api/states). Requires domain or prefix. Results are capped; do not request an unfiltered dump.",
+        "List Home Assistant states (GET /api/states). Requires domain, prefix, or q. Results are capped and pageable; do not request an unfiltered dump.",
       inputSchema: {
         domain: z
           .string()
@@ -43,6 +43,10 @@ export function createServer(client: HomeAssistantClient): McpServer {
           .string()
           .optional()
           .describe("entity_id prefix such as light.kitchen or sensor.weather."),
+        q: z
+          .string()
+          .optional()
+          .describe("Case-insensitive substring match on entity_id and attributes.friendly_name."),
         limit: z
           .number()
           .int()
@@ -50,9 +54,27 @@ export function createServer(client: HomeAssistantClient): McpServer {
           .max(MAX_STATE_LIMIT)
           .optional()
           .describe(`Max entities to return. Default 50, hard cap ${MAX_STATE_LIMIT}.`),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .optional()
+          .describe("Skip this many matched entities after filtering. Default 0."),
       },
     },
     async (input) => tools.ha_list_states(input),
+  );
+
+  server.registerTool(
+    "ha_list_services",
+    {
+      description:
+        "List services for one Home Assistant domain (GET /api/services). Domain is required. Use this before guessing ha_call_service fields. Never dump every domain.",
+      inputSchema: {
+        domain: z.string().describe("Service domain such as light, climate, or switch."),
+      },
+    },
+    async (input) => tools.ha_list_services(input),
   );
 
   server.registerTool(

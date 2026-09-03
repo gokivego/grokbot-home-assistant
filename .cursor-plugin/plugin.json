@@ -27,7 +27,7 @@
       "HA_TOKEN": {
         "type": "string",
         "title": "Long-lived access token",
-        "description": "Create one in Home Assistant under Profile, Security, Long-lived access tokens."
+        "description": "User profile (bottom of HA sidebar) > Security > Long-lived access tokens. Create Token, copy once, paste here. Inherits that user's permissions until revoked. Never put it in git or chat."
       }
     },
     "required": [
