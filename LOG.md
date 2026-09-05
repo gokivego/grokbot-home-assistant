@@ -1,5 +1,11 @@
 # Home Assistant plugin log
 
+## [2026-09-05] Cursor Marketplace application submitted
+
+- `gokivego/grokbot-home-assistant` is public. `.env` is not in the repo (raw GitHub 404).
+- Submitted `home-assistant` at `POST /api/marketplace/publish-application` (`{"ok":true}`). Contact `gokivego@gmail.com`. Cursor reviews by hand; follow-up goes to that inbox and marketplace-publishing@cursor.com.
+- Listing is not live until Cursor approves it. Grok Bot Plugins will not show it before then.
+
 ## [2026-09-05] Secret scan and marketplace copy
 
 - Tracked tree and git history of `gokivego/grokbot-home-assistant` have no Home Assistant JWT, no nonempty `HA_TOKEN=`, and no house Tailscale IP. Local `.env` holds a live token and stays gitignored.
