@@ -1,5 +1,16 @@
 # Home Assistant plugin log
 
+## [2026-09-05] Secret scan and marketplace copy
+
+- Tracked tree and git history of `gokivego/grokbot-home-assistant` have no Home Assistant JWT, no nonempty `HA_TOKEN=`, and no house Tailscale IP. Local `.env` holds a live token and stays gitignored.
+- README and plugin description now say unofficial / not affiliated, plus a privacy section: no analytics, token stays on the MCP host, REST only to the user-supplied `HA_URL`.
+
+## [2026-09-05] Publish path: plugin, not a new Bot
+
+- Grok Bot approval is Cursor Marketplace (`cursor.com/marketplace/publish`), not a Home Assistant Bot template and not a PR to `xai-org/plugin-marketplace` (that catalog is Grok Build).
+- `gokivego/grokbot-home-assistant` exists and is still private. Submit needs it public.
+- A plugin is account-wide. Installing it does not create a Bot. A shared Bot does not install the plugin or copy tokens.
+
 ## [2026-09-02] Pagination truncated flag and plugin polish
 
 - Last page of `ha_list_states` now reports `truncated: false`; GET requests omit Content-Type; entity_id Zod regex on get/toggle/call_service; `ha_list_services` defers empty-domain to `requireSlug`; network-error test; README notes Cursor/Grok Bot expands `${PLUGIN_ROOT}` at install.

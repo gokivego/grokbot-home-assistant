@@ -39,6 +39,7 @@ test("Cursor plugin manifest names the plugin and requires HA_URL plus HA_TOKEN"
   assert.match(urlHelp, /Nabu Casa/);
   assert.match(urlHelp, /LAN-only IPs \(192\.168\.x, 10\.x, 172\.16-31\.x\) fail/);
   assert.match(urlHelp, /Grok Bot cloud computers are not/);
+  assert.match(plugin.description, /Unofficial/);
   assert.match(plugin.description, /MCP stdio runs on the Grok Bot or Cursor computer/);
 });
 
@@ -69,7 +70,7 @@ test(".env.example has no token and documents MagicDNS", async () => {
   assert.match(example, /LAN-only IPs fail/);
 });
 
-test("plugin.json repository points at the private grokbot-home-assistant repo", async () => {
+test("plugin.json repository points at grokbot-home-assistant", async () => {
   const plugin = JSON.parse(await readFile(".cursor-plugin/plugin.json", "utf8")) as {
     repository?: string;
   };
@@ -93,6 +94,9 @@ test("skill documents Reachability and ping-failure cause", async () => {
 
 test("README uses generic networking examples and no house Tailscale IP", async () => {
   const readme = await readFile("README.md", "utf8");
+  assert.match(readme, /Unofficial community plugin/);
+  assert.match(readme, /## Privacy/);
+  assert.match(readme, /does not collect analytics/);
   assert.match(readme, /## Reachability/);
   assert.match(readme, /Tailscale MagicDNS/);
   assert.match(readme, /http:\/\/homeassistant:8123/);

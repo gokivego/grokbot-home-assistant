@@ -1,6 +1,8 @@
 # Home Assistant plugin
 
-Cursor marketplace plugin that lets an agent query and control Home Assistant over the REST API. It also loads as a Cursor-format plugin in Grok Bot. Plugin `name` is `home-assistant`. The public GitHub repo is [gokivego/grokbot-home-assistant](https://github.com/gokivego/grokbot-home-assistant). In this workspace the folder is still `home-assistant/`.
+Unofficial community plugin. Not affiliated with Nabu Casa or the Home Assistant project.
+
+Cursor marketplace plugin that lets an agent query and control Home Assistant over the REST API. It also loads as a Cursor-format plugin in Grok Bot. Plugin `name` is `home-assistant`. The GitHub repo is [gokivego/grokbot-home-assistant](https://github.com/gokivego/grokbot-home-assistant). In this workspace the folder is still `home-assistant/`.
 
 MCP stdio runs on the Grok Bot or Cursor computer. It does not run on Home Assistant. This plugin calls HA REST from that computer, so you do not need HA's native `/api/mcp` integration.
 
@@ -110,14 +112,18 @@ tests/                       mocked unit tests plus optional live ping
 assets/logo.svg
 ```
 
+## Privacy
+
+This plugin does not collect analytics and does not send data to the author. `HA_URL` and `HA_TOKEN` stay on the Grok Bot or Cursor computer that runs MCP stdio. The process only calls the Home Assistant REST API at the URL you set. It does not use Home Assistant data to train models.
+
 ## Publish to Cursor marketplace
 
-The GitHub repo name is `grokbot-home-assistant`, not `home-assistant`. Plugin `name` stays `home-assistant`. Marketplace submission needs that repo to be public.
+The GitHub repo name is `grokbot-home-assistant`, not `home-assistant`. Plugin `name` stays `home-assistant`. Cursor Marketplace review needs that repo to be public and open source (MIT).
 
 1. Host this directory at [gokivego/grokbot-home-assistant](https://github.com/gokivego/grokbot-home-assistant) so `.cursor-plugin/plugin.json` is at the repo root.
 2. Confirm plugin `name` is `home-assistant`, `repository` is `https://github.com/gokivego/grokbot-home-assistant`, logo is `assets/logo.svg`, and both variables are declared.
-3. After the repo is public, submit `https://github.com/gokivego/grokbot-home-assistant` at [cursor.com/marketplace/publish](https://cursor.com/marketplace/publish).
+3. Submit `https://github.com/gokivego/grokbot-home-assistant` at [cursor.com/marketplace/publish](https://cursor.com/marketplace/publish). Listing is free. Cursor reviews by hand; later updates are reviewed too. Questions: marketplace-publishing@cursor.com.
 
-Docs used while building: [Cursor plugins](https://cursor.com/docs/reference/plugins), [Home Assistant REST](https://developers.home-assistant.io/docs/api/rest).
+Docs used while building: [Cursor plugins](https://cursor.com/docs/reference/plugins), [Home Assistant REST](https://developers.home-assistant.io/docs/api/rest), [Publisher terms](https://cursor.com/marketplace-publisher-terms).
 
 MIT. Author: Venkat Gokul Reddy Palampally.

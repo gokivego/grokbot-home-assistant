@@ -2,7 +2,7 @@
   "name": "home-assistant",
   "displayName": "Home Assistant",
   "version": "1.0.0",
-  "description": "Query and control Home Assistant over REST. MCP stdio runs on the Grok Bot or Cursor computer, not on Home Assistant. HA_URL must be reachable from that computer.",
+  "description": "Unofficial. Query and control Home Assistant over REST. MCP stdio runs on the Grok Bot or Cursor computer, not on Home Assistant. HA_URL must be reachable from that computer.",
   "author": {
     "name": "Venkat Gokul Reddy Palampally"
   },
